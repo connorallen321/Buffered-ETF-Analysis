@@ -12,14 +12,16 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 def get_current_price(ticker):
     try:
         t = yf.Ticker(ticker)
-        price = t.info.get('regularMarketPrice')
-        if not price:
-            hist = t.history(period='1d')
+        price = t.info.get('regularMarketPrice', None)
+        if price:
+            return price
+        else:
+            hist = t.history(period="1d")
             if not hist.empty:
-                price = hist['Close'].iloc[-1]
-        return price
-    except:
-        return None
+                return hist['Close'].iloc[-1]
+    except Exception as e:
+        st.error(f"yfinance error: {e}")
+    return None
 
 def get_buffered_etf_data_from_gpt(ticker, current_price):
     prompt = f"""
@@ -52,7 +54,8 @@ Buffer End: $XX.XX
         if not (cap > buffer_start > buffer_end):
             return None, None, None
         return cap, buffer_start, buffer_end
-    except:
+    except Exception as e:
+        st.error(f"GPT error: {e}")
         return None, None, None
 
 def draw_chart(cap, current, buffer_start, buffer_end, floor=0.0):
@@ -87,15 +90,12 @@ def draw_chart(cap, current, buffer_start, buffer_end, floor=0.0):
     ax.spines['bottom'].set_visible(False)
     st.pyplot(fig)
 
-st.markdown("### Enter a First Trust ETF ticker (e.g., `DAPR`, `FFEB`)")
-
+# UI Logic
 ticker = st.text_input("Ticker symbol", value="DAPR")
-generate_inputs = st.button("Generate Inputs")
-
 if "inputs" not in st.session_state:
-    st.session_state.inputs = {}
+    st.session_state.inputs = None
 
-if generate_inputs:
+if st.button("Generate Inputs"):
     current = get_current_price(ticker)
     if not current:
         st.error("❌ Could not fetch current price.")
@@ -110,13 +110,15 @@ if generate_inputs:
                 "buffer_end": buffer_end,
                 "current": current
             }
-            st.success(f"✅ Inputs generated: Cap = ${cap:.2f}, Buffer Start = ${buffer_start:.2f}, Buffer End = ${buffer_end:.2f}, Current = ${current:.2f}")
+            st.success(
+                f"✅ Inputs generated:\n"
+                f"Cap = ${cap:.2f}\n"
+                f"Buffer Start = ${buffer_start:.2f}\n"
+                f"Buffer End = ${buffer_end:.2f}\n"
+                f"Current = ${current:.2f}"
+            )
 
 if st.session_state.inputs:
     if st.button("Generate Chart"):
-        draw_chart(
-            st.session_state.inputs["cap"],
-            st.session_state.inputs["current"],
-            st.session_state.inputs["buffer_start"],
-            st.session_state.inputs["buffer_end"]
-        )
+        i = st.session_state.inputs
+        draw_chart(i["cap"], i["current"], i["buffer_start"], i["buffer_end"])
