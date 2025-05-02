@@ -110,8 +110,7 @@ if generate_inputs:
                 "buffer_end": buffer_end,
                 "current": current
             }
-            st.success(f"✅ Inputs generated:
-Cap = ${cap:.2f}, Buffer Start = ${buffer_start:.2f}, Buffer End = ${buffer_end:.2f}, Current = ${current:.2f}")
+            st.success(f"✅ Inputs generated: Cap = ${cap:.2f}, Buffer Start = ${buffer_start:.2f}, Buffer End = ${buffer_end:.2f}, Current = ${current:.2f}")
 
 if st.session_state.inputs:
     if st.button("Generate Chart"):
